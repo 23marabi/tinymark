@@ -56,6 +56,6 @@ fn main() {
         Commands::Delete { url } => database::remove_entry(url, json, storage_path),
         Commands::List { } => commands::list(json, storage_path),
         Commands::Export { file } => commands::export(file.to_path_buf(), json, storage_path),
-        Commands::Import { file } => commands::import(file.to_path_buf(), json),
+        Commands::Import { file } => commands::import(file.to_path_buf(), json, storage_path),
     }
 }

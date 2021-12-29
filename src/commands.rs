@@ -138,7 +138,7 @@ pub fn export(file_path: PathBuf, json: bool, path: Option<PathBuf>) {
     }
 }
 
-pub fn import(file_path: PathBuf, json: bool) {
+pub fn import(file_path: PathBuf, json: bool, store_path: Option<PathBuf>) {
     match json {
         true => {
             println!("{}", json!({
@@ -164,6 +164,7 @@ pub fn import(file_path: PathBuf, json: bool) {
                 }
             };
 
+            database::insert_multiple(&bookmarks, json, store_path);
             info!("succesfully imported bookmarks from {}!", file_path.to_str().unwrap());
 
         },

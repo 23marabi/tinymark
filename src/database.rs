@@ -45,6 +45,40 @@ fn open_database(json: bool, path: Option<PathBuf>) -> Option<sled::Db> {
     return Some(db);
 }
 
+pub fn insert_multiple(entries: &Vec<Bookmark>, json: bool, path: Option<PathBuf>) {
+    let db = match open_database(json, path) {
+        Some(database) => database,
+        None => std::process::exit(exitcode::NOINPUT),
+    };
+
+    let mut batch = sled::Batch::default();
+
+    for i in entries {
+        let bytes;
+        match bincode::serialize(&i) {
+            Ok(result) => bytes = result,
+            Err(error) => {
+                if json {
+                    println!("{}", json!({
+                        "status": "fail",
+                        "reason": error.to_string(),
+                    }));
+                } else {
+                    error!("failed serializing entry: {}", error);
+                }
+                std::process::exit(exitcode::DATAERR);
+            },
+        }
+
+        batch.insert(i.link.as_str(), bytes);
+    }
+    
+    match db.apply_batch(batch) {
+        Ok(_) => info!("succesfully applied batch insert"),
+        Err(e) => warn!("error in applying batch insert: {}", e),
+    }
+}
+
 pub fn insert_entry(entry: &Bookmark, json: bool, path: Option<PathBuf>) {
     let db = match open_database(json, path) {
         Some(database) => database,
