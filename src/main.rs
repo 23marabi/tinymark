@@ -31,31 +31,12 @@ fn main() {
         json = args.json;
     }
 
-    let storage_path: Option<PathBuf> = match &cfg.storage_location {
-        Some(path) => {
-            let HOME = env::var("HOME");
-            match HOME {
-                Ok(val) => {
-                    let mut new_path = PathBuf::new();
-                    new_path.push(val);
-                    new_path.push(path);
-                    Some(new_path)
-                },
-                Err(e) => {
-                    commands::env_err(json, e);
-                    None
-                },
-            }
-        },
-        None => None,
-    };
-
     match &args.command {
-        Commands::Add { url, name, description, tags } => commands::add(url, name, description, tags, json, storage_path),
-        Commands::Edit { url } => commands::edit(json, url, storage_path),
-        Commands::Delete { url } => database::remove_entry(url, json, storage_path),
-        Commands::List { } => commands::list(json, storage_path),
-        Commands::Export { file } => commands::export(file.to_path_buf(), json, storage_path),
-        Commands::Import { file } => commands::import(file.to_path_buf(), json, storage_path),
+        Commands::Add { url, name, description, tags } => commands::add(url, name, description, tags, json, cfg.storage_location),
+        Commands::Edit { url } => commands::edit(json, url, cfg.storage_location),
+        Commands::Delete { url } => database::remove_entry(url, json, cfg.storage_location),
+        Commands::List { } => commands::list(json, cfg.storage_location),
+        Commands::Export { file } => commands::export(file.to_path_buf(), json, cfg.storage_location),
+        Commands::Import { file } => commands::import(file.to_path_buf(), json, cfg.storage_location),
     }
 }

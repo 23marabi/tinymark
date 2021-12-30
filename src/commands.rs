@@ -115,58 +115,77 @@ pub fn env_err(json: bool, e: VarError) {
 }
 
 pub fn export(file_path: PathBuf, json: bool, path: Option<PathBuf>) {
+    let file = match File::create(&file_path) {
+        Ok(f) => f,
+        Err(e) => {
+            if json {
+                println!("{}", json!({
+                    "status": "fail",
+                    "reason": e.to_string(),
+                }));
+            } else {
+                warn!("error opening file! {}", e);
+            }
+            std::process::exit(exitcode::DATAERR);
+        },
+    };
+    let writer = BufWriter::new(file);
+        
+    match database::get_all(json, path) {
+        Some(bookmarks) => serde_json::to_writer(writer, &bookmarks).unwrap(),
+        None => std::process::exit(exitcode::IOERR),
+    }
+    
     if json {
         println!("{}", json!({
-            "status": "fail",
-            "reason": "unsupported command",
+            "status": "success",
+            "reason": format!("exported bookmarks to {}", file_path.to_str().unwrap()),
         }));
     } else {
-        let file = match File::create(&file_path) {
-            Ok(f) => f,
-            Err(e) => {
-                warn!("error opening file! {}", e);
-                std::process::exit(exitcode::DATAERR);
-            },
-        };
-        let writer = BufWriter::new(file);
-        
-        match database::get_all(json, path) {
-            Some(bookmarks) => serde_json::to_writer(writer, &bookmarks).unwrap(),
-            None => std::process::exit(exitcode::IOERR),
-        }
         info!("Succesfully exported bookmarks to {}!", file_path.to_str().unwrap());
     }
 }
 
 pub fn import(file_path: PathBuf, json: bool, store_path: Option<PathBuf>) {
-    match json {
-        true => {
-            println!("{}", json!({
-                "status": "fail",
-                "reason": "unsupported command",
-            }));
-        },
-        false => {
-            let file = match File::open(&file_path) {
-                Ok(f) => f,
-                Err(e) => {
-                    warn!("error opening file! {}", e);
-                    std::process::exit(exitcode::DATAERR);
-                }
-            };
-            let reader = BufReader::new(file);
+    let file = match File::open(&file_path) {
+        Ok(f) => f,
+        Err(e) => {
+            if json {
+                println!("{}", json!({
+                    "status": "fail",
+                    "reason": e.to_string(),
+                }));
+            } else {
+                warn!("error opening file! {}", e);
+            }
+            std::process::exit(exitcode::DATAERR);
+        }
+    };
+    let reader = BufReader::new(file);
 
-            let bookmarks: Vec<Bookmark> = match serde_json::from_reader(reader) {
-                Ok(contents) => contents,
-                Err(e) => {
-                    warn!("error serializing file! {}", e);
-                    std::process::exit(exitcode::DATAERR);
-                }
-            };
+    let bookmarks: Vec<Bookmark> = match serde_json::from_reader(reader) {
+        Ok(contents) => contents,
+        Err(e) => {
+            if json {
+                println!("{}", json!({
+                    "status": "fail",
+                    "reason": e.to_string(),
+                }));
+            } else {
+                warn!("error serializing file! {}", e);
+            }
+            std::process::exit(exitcode::DATAERR);
+        }
+    };
 
-            database::insert_multiple(&bookmarks, json, store_path);
-            info!("succesfully imported bookmarks from {}!", file_path.to_str().unwrap());
+    database::insert_multiple(&bookmarks, json, store_path);
 
-        },
+    if json {
+        println!("{}", json!({
+            "status": "success",
+            "reason": format!("imported bookmarks from {}", file_path.to_str().unwrap()),
+        }));
+    } else {
+        info!("succesfully imported bookmarks from {}!", file_path.to_str().unwrap());
     }
 }

@@ -8,7 +8,7 @@ without needing a browser.
 It doesn't support icons or much of anything else right now.
 
 A configuration file will be stored in `~/.config/tinymark/tinymark.toml`
-By default the database will be stored in `~/.local/share/tinymark`
+By default the databases will be stored in `~/.local/share/tinymark`
 
 ## Using
 List stored bookmarks:
@@ -34,3 +34,11 @@ Any command that returns a Bookmark will return a JSON serialized object of it.
 
 Otherwise it will return a 'status' key of value 'success' or 'fail',
 along with a 'reason' value with a full-length output.
+
+## Configuration
+There is only one configuration file, stored as a TOML file.
+The valid fields are:
+
+`json`: Manually specify to output as JSON. Set to `true` or `false`
+
+`storage_location`: The full path for where to store the databases.

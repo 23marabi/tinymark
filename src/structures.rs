@@ -48,7 +48,7 @@ impl fmt::Display for Bookmark {
             None => do_nothing(),
         };
 
-        print!("[");
+        print!("Tags: [");
         for i in &self.tags {
             print!("{},", i);
         }

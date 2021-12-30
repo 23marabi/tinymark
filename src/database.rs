@@ -18,6 +18,7 @@ fn open_database(json: bool, path: Option<PathBuf>) -> Option<sled::Db> {
                     let mut tmp_path = PathBuf::new();
                     tmp_path.push(val);
                     tmp_path.push(".local/share/tinymark");
+                    tmp_path.push("bookmarks_db");
                     tmp_path
                 },
                 Err(e) => {
@@ -74,8 +75,21 @@ pub fn insert_multiple(entries: &Vec<Bookmark>, json: bool, path: Option<PathBuf
     }
     
     match db.apply_batch(batch) {
-        Ok(_) => info!("succesfully applied batch insert"),
-        Err(e) => warn!("error in applying batch insert: {}", e),
+        Ok(_) => {
+            if !json {
+                info!("succesfully applied batch insert");
+            }
+        },
+        Err(e) => {
+            if json {
+                println!("{}", json!({
+                    "status": "fail",
+                    "reason": e.to_string(),
+                }));
+            } else {
+                warn!("error in applying batch insert: {}", e);
+            }
+        },
     }
 }
 
