@@ -614,10 +614,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "sha1"
-version = "0.6.0"
+name = "simd-abstraction"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2579985fda508104f7587689507983eadd6a6e84dd35d6d115361f530916fa0d"
+checksum = "df70fadc9b3167d59d7301bffe0eee7f0a353024d338e7d25d822c28450ae893"
 
 [[package]]
 name = "sled"
@@ -725,7 +725,8 @@ dependencies = [
  "serde_json",
  "sled",
  "url",
- "uuid",
+ "uuid 1.0.0-alpha.1",
+ "uuid-simd",
 ]
 
 [[package]]
@@ -803,9 +804,26 @@ name = "uuid"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+
+[[package]]
+name = "uuid"
+version = "1.0.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb3ab47baa004111b323696c6eaa2752e7356f7f77cf6b6dc7a2087368ce1ca4"
 dependencies = [
+ "getrandom",
+ "rand",
  "serde",
- "sha1",
+]
+
+[[package]]
+name = "uuid-simd"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "591acd57f5258ca9b664e0866820e999ab913e0777c6db32b7a7d0c34c5f0fcd"
+dependencies = [
+ "simd-abstraction",
+ "uuid 0.8.2",
 ]
 
 [[package]]

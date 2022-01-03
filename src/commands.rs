@@ -1,66 +1,76 @@
-use url::Url;
-use std::env::VarError;
-use chrono::Utc;
-use crate::structures::Bookmark;
-use paris::*;
 use crate::database;
+use crate::structures::{Bookmark, Container, ContainerTypes};
+use chrono::Utc;
+use paris::*;
 use serde_json::json;
-use std::path::PathBuf;
+use std::env::VarError;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
+use std::path::PathBuf;
+use url::Url;
+use uuid::Uuid;
+use uuid_simd::UuidExt;
 
-use dialoguer::{
-    Select,
-    theme::ColorfulTheme,
-    console::Term
-};
+use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 
 pub fn edit(json: bool, url: &Option<Url>, path: Option<PathBuf>) {
     if json {
-        println!("{}", json!({
-            "status": "fail",
-            "reason": "unsupported command",
-        }));
+        println!(
+            "{}",
+            json!({
+                "status": "fail",
+                "reason": "unsupported command",
+            })
+        );
         std::process::exit(exitcode::DATAERR);
     } else {
         match url {
             Some(link) => {
                 println!("User selected item :\n{}", link);
-            },
-            None => {
-                match database::get_all(json, path) {
-                    Some(bookmarks) => {
-                        let mut items: Vec<&Url> = Vec::new();
-                        for i in &bookmarks {
-                            items.push(&i.link);
-                        }
-                        let selection = Select::with_theme(&ColorfulTheme::default())
-                            .items(&items)
-                            .default(0)
-                            .interact_on_opt(&Term::stderr()).unwrap();
+            }
+            None => match database::get_all(json, path) {
+                Some(bookmarks) => {
+                    let mut items: Vec<&Url> = Vec::new();
+                    for i in &bookmarks {
+                        items.push(&i.link);
+                    }
+                    let selection = Select::with_theme(&ColorfulTheme::default())
+                        .items(&items)
+                        .default(0)
+                        .interact_on_opt(&Term::stderr())
+                        .unwrap();
 
-                        match selection {
-                            Some(index) => println!("User selected item :\n{}", bookmarks[index]),
-                            None => println!("User did not select anything")
-                        }
-                    },
-                    None => {
-                        if json {
-                            println!("{}", json!({
+                    match selection {
+                        Some(index) => println!("User selected item :\n{}", bookmarks[index]),
+                        None => println!("User did not select anything"),
+                    }
+                }
+                None => {
+                    if json {
+                        println!(
+                            "{}",
+                            json!({
                                 "status": "fail",
                                 "reason": "an error ocurred in running your command",
-                            }));
-                        } else {
-                            warn!("an error ocurred in running your command");
-                        }
-                    },
+                            })
+                        );
+                    } else {
+                        warn!("an error ocurred in running your command");
+                    }
                 }
             },
         }
     }
 }
 
-pub fn add(url: &Url, name: &String, description: &Option<String>, tags: &Vec<String>, json: bool, path: Option<PathBuf>) {
+pub fn add(
+    url: &Url,
+    name: &String,
+    description: &Option<String>,
+    tags: &Vec<String>,
+    json: bool,
+    path: Option<PathBuf>,
+) {
     let bookmark = Bookmark {
         link: url.to_owned(),
         label: name.to_string(),
@@ -89,13 +99,16 @@ pub fn list(json: bool, path: Option<PathBuf>) {
                     println!("{}", i);
                 }
             }
-        },
+        }
         None => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": "an error ocurred in running your command",
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": "an error ocurred in running your command",
+                    })
+                );
             } else {
                 warn!("an error ocurred in running your command");
             }
@@ -105,10 +118,13 @@ pub fn list(json: bool, path: Option<PathBuf>) {
 
 pub fn env_err(json: bool, e: VarError) {
     if json {
-        println!("{}", json!({
-            "status": "fail",
-            "reason": e.to_string(),
-        }));
+        println!(
+            "{}",
+            json!({
+                "status": "fail",
+                "reason": e.to_string(),
+            })
+        );
     } else {
         warn!("couldn't read $HOME environment variable: {}", e);
     }
@@ -119,30 +135,39 @@ pub fn export(file_path: PathBuf, json: bool, path: Option<PathBuf>) {
         Ok(f) => f,
         Err(e) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": e.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": e.to_string(),
+                    })
+                );
             } else {
                 warn!("error opening file! {}", e);
             }
             std::process::exit(exitcode::DATAERR);
-        },
+        }
     };
     let writer = BufWriter::new(file);
-        
+
     match database::get_all(json, path) {
         Some(bookmarks) => serde_json::to_writer(writer, &bookmarks).unwrap(),
         None => std::process::exit(exitcode::IOERR),
     }
-    
+
     if json {
-        println!("{}", json!({
-            "status": "success",
-            "reason": format!("exported bookmarks to {}", file_path.to_str().unwrap()),
-        }));
+        println!(
+            "{}",
+            json!({
+                "status": "success",
+                "reason": format!("exported bookmarks to {}", file_path.to_str().unwrap()),
+            })
+        );
     } else {
-        info!("Succesfully exported bookmarks to {}!", file_path.to_str().unwrap());
+        info!(
+            "Succesfully exported bookmarks to {}!",
+            file_path.to_str().unwrap()
+        );
     }
 }
 
@@ -151,10 +176,13 @@ pub fn import(file_path: PathBuf, json: bool, store_path: Option<PathBuf>) {
         Ok(f) => f,
         Err(e) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": e.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": e.to_string(),
+                    })
+                );
             } else {
                 warn!("error opening file! {}", e);
             }
@@ -167,10 +195,13 @@ pub fn import(file_path: PathBuf, json: bool, store_path: Option<PathBuf>) {
         Ok(contents) => contents,
         Err(e) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": e.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": e.to_string(),
+                    })
+                );
             } else {
                 warn!("error serializing file! {}", e);
             }
@@ -181,11 +212,34 @@ pub fn import(file_path: PathBuf, json: bool, store_path: Option<PathBuf>) {
     database::insert_multiple(&bookmarks, json, store_path);
 
     if json {
-        println!("{}", json!({
-            "status": "success",
-            "reason": format!("imported bookmarks from {}", file_path.to_str().unwrap()),
-        }));
+        println!(
+            "{}",
+            json!({
+                "status": "success",
+                "reason": format!("imported bookmarks from {}", file_path.to_str().unwrap()),
+            })
+        );
     } else {
-        info!("succesfully imported bookmarks from {}!", file_path.to_str().unwrap());
+        info!(
+            "succesfully imported bookmarks from {}!",
+            file_path.to_str().unwrap()
+        );
     }
 }
+
+pub fn new_folder(label: &String, json: bool) {
+    let folder = Container {
+        id: Uuid::new_v4(),
+        label: label.to_string(),
+        container: None,
+        container_type: ContainerTypes::Folder,
+    };
+    println!("{:?}", folder);
+    if json {
+        println!("{}", serde_json::to_string(&folder).unwrap());
+    } else {
+        println!("{:?}", folder);
+    }
+}
+
+pub fn create_heirarchy(bookmarks: Vec<Bookmark>, containers: Vec<Container>) {}

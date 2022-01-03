@@ -1,10 +1,11 @@
+use chrono::prelude::*;
+use clap::{AppSettings, Parser, Subcommand};
+use serde_derive::{Deserialize, Serialize};
+use std::fmt;
+use std::path::PathBuf;
 use url::Url;
 use uuid::Uuid;
-use serde_derive::{Serialize, Deserialize};
-use clap::{AppSettings, Parser, Subcommand};
-use std::fmt;
-use chrono::prelude::*;
-use std::path::PathBuf;
+use uuid_simd::UuidExt;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -18,7 +19,7 @@ impl Default for Config {
         Config {
             tui: false,
             json: false,
-            storage_location: Some(PathBuf::from(r"$HOME/.local/share/tinymark")),
+            storage_location: None,
         }
     }
 }
@@ -35,7 +36,7 @@ pub struct Bookmark {
 }
 
 fn do_nothing() {
- //yea
+    //yea
 }
 
 impl fmt::Display for Bookmark {
@@ -54,7 +55,11 @@ impl fmt::Display for Bookmark {
         }
         print!("]");
 
-        write!(f, "\nCreated at: {}\n", &self.created_at.with_timezone(&Local).to_rfc2822())
+        write!(
+            f,
+            "\nCreated at: {}\n",
+            &self.created_at.with_timezone(&Local).to_rfc2822()
+        )
     }
 }
 
@@ -72,6 +77,17 @@ pub enum ContainerTypes {
     Group,
 }
 
+#[derive(Serialize, Deserialize)]
+pub enum Thingy {
+    Bookmark(Bookmark),
+    Container(Container),
+}
+
+pub struct Heirarchy {
+    pub root: Container,
+    pub heirarchy: Vec<Vec<Thingy>>,
+}
+
 #[derive(Parser)]
 pub struct Cli {
     /// Output as JSON
@@ -84,6 +100,10 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Add a folder
+    #[clap(setting(AppSettings::ArgRequiredElseHelp))]
+    New_Folder { name: String },
+
     /// Add a bookmark
     #[clap(setting(AppSettings::ArgRequiredElseHelp))]
     Add {
@@ -97,13 +117,11 @@ pub enum Commands {
         description: Option<String>,
 
         /// Optional comma-seperated tags
-        tags: Vec<String>
+        tags: Vec<String>,
     },
 
     /// Edit a bookmark
-    Edit {
-        url: Option<Url>,
-    },
+    Edit { url: Option<Url> },
 
     /// Delete a bookmark
     #[clap(setting(AppSettings::ArgRequiredElseHelp))]

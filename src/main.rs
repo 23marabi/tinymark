@@ -32,6 +32,7 @@ fn main() {
     }
 
     match &args.command {
+        Commands::New_Folder { name } => commands::new_folder(name, json),
         Commands::Add { url, name, description, tags } => commands::add(url, name, description, tags, json, cfg.storage_location),
         Commands::Edit { url } => commands::edit(json, url, cfg.storage_location),
         Commands::Delete { url } => database::remove_entry(url, json, cfg.storage_location),

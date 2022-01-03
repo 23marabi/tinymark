@@ -1,11 +1,11 @@
-use crate::structures::Bookmark;
 use crate::commands::env_err;
+use crate::structures::Bookmark;
 
 use paris::*;
-use url::Url;
-use std::env;
 use serde_json::json;
+use std::env;
 use std::path::PathBuf;
+use url::Url;
 
 fn open_database(json: bool, path: Option<PathBuf>) -> Option<sled::Db> {
     let db: sled::Db;
@@ -20,27 +20,30 @@ fn open_database(json: bool, path: Option<PathBuf>) -> Option<sled::Db> {
                     tmp_path.push(".local/share/tinymark");
                     tmp_path.push("bookmarks_db");
                     tmp_path
-                },
+                }
                 Err(e) => {
                     env_err(json, e);
                     std::process::exit(exitcode::DATAERR);
-                },
+                }
             }
-        },
+        }
     };
     match sled::open(database_path) {
         Ok(database) => db = database,
         Err(error) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": error.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": error.to_string(),
+                    })
+                );
             } else {
                 error!("error in opening database: {}", error);
             }
             return None;
-        },
+        }
     };
 
     return Some(db);
@@ -60,36 +63,42 @@ pub fn insert_multiple(entries: &Vec<Bookmark>, json: bool, path: Option<PathBuf
             Ok(result) => bytes = result,
             Err(error) => {
                 if json {
-                    println!("{}", json!({
-                        "status": "fail",
-                        "reason": error.to_string(),
-                    }));
+                    println!(
+                        "{}",
+                        json!({
+                            "status": "fail",
+                            "reason": error.to_string(),
+                        })
+                    );
                 } else {
                     error!("failed serializing entry: {}", error);
                 }
                 std::process::exit(exitcode::DATAERR);
-            },
+            }
         }
 
         batch.insert(i.link.as_str(), bytes);
     }
-    
+
     match db.apply_batch(batch) {
         Ok(_) => {
             if !json {
                 info!("succesfully applied batch insert");
             }
-        },
+        }
         Err(e) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": e.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": e.to_string(),
+                    })
+                );
             } else {
                 warn!("error in applying batch insert: {}", e);
             }
-        },
+        }
     }
 }
 
@@ -104,39 +113,48 @@ pub fn insert_entry(entry: &Bookmark, json: bool, path: Option<PathBuf>) {
         Ok(result) => bytes = result,
         Err(error) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": error.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": error.to_string(),
+                    })
+                );
             } else {
                 error!("failed serializing entry: {}", error);
             }
             std::process::exit(exitcode::DATAERR);
-        },
+        }
     };
 
     match db.insert(entry.link.to_string(), bytes) {
         Ok(_) => {
             if json {
-                println!("{}", json!({
-                    "status": "success",
-                    "reason": "inserted entry",
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "success",
+                        "reason": "inserted entry",
+                    })
+                );
             } else {
                 info!("succesfully inserted entry <i>{}", entry.link);
             }
-        },
+        }
         Err(error) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": error.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": error.to_string(),
+                    })
+                );
             } else {
                 error!("failed to insert entry <i>{}</i>!\n {}", entry.link, error);
             }
             std::process::exit(exitcode::IOERR);
-        },
+        }
     }
 
     db.flush().unwrap();
@@ -152,15 +170,18 @@ pub fn remove_entry(link: &Url, json: bool, path: Option<PathBuf>) {
         Ok(_) => info!("succesfully removed entry <i>{}", link),
         Err(error) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": error.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": error.to_string(),
+                    })
+                );
             } else {
                 error!("failed to remove entry <i>{}</i>!\n {}", link, error);
             }
             std::process::exit(exitcode::IOERR);
-        },
+        }
     }
 
     db.flush().unwrap();
@@ -173,20 +194,21 @@ pub fn get_all(json: bool, path: Option<PathBuf>) -> Option<Vec<Bookmark>> {
     };
 
     let first_key = match db.first() {
-        Ok(pair) => {
-            pair.unwrap().0
-        },
+        Ok(pair) => pair.unwrap().0,
         Err(error) => {
             if json {
-                println!("{}", json!({
-                    "status": "fail",
-                    "reason": error.to_string(),
-                }));
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": error.to_string(),
+                    })
+                );
             } else {
                 error!("failed to get first key: {}", error);
             }
             return None;
-        },
+        }
     };
 
     let mut bookmarks_vector: Vec<Bookmark> = Vec::new();
@@ -200,19 +222,22 @@ pub fn get_all(json: bool, path: Option<PathBuf>) -> Option<Vec<Bookmark>> {
                     Ok(result) => read_entry = result,
                     Err(error) => {
                         if json {
-                            println!("{}", json!({
-                                "status": "fail",
-                                "reason": error.to_string(),
-                            }));
+                            println!(
+                                "{}",
+                                json!({
+                                    "status": "fail",
+                                    "reason": error.to_string(),
+                                })
+                            );
                         } else {
                             error!("failed deserializing entry: {}", error);
                         }
                         return None;
-                    },
+                    }
                 }
                 bookmarks_vector.push(read_entry);
-            },
-            None => { break },
+            }
+            None => break,
         }
     }
 
@@ -227,7 +252,7 @@ pub fn update_entry(entry: &Bookmark) {
         Ok(bytes) => bytes,
         Err(error) => panic!("failed to serialize entry: {}", error),
     };
-    
+
     let old_entry: Bookmark = get_entry(&entry.id.to_simple().to_string()).unwrap();
 
     let old_bytes = match bincode::serialize(&old_entry) {
@@ -253,7 +278,7 @@ pub fn get_entry(id: &str) -> Option<Bookmark> {
         Ok(entry) => entry,
         Err(error) => panic!("failed to get old entry: {}", error),
     };
-    
+
     if let Some(entry) = db_entry {
         let read_entry = match bincode::deserialize(&entry) {
             Ok(entry) => entry,
