@@ -24,15 +24,15 @@ impl Default for Config {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Bookmark {
-    //pub id: Uuid,
-    pub link: Url,
-    pub label: String,
-    pub description: Option<String>,
-    pub tags: Vec<String>,
     pub container: Option<Uuid>,
     pub created_at: DateTime<Utc>,
+    pub description: Option<String>,
+    pub label: String,
+    //pub id: Uuid,
+    pub link: Url,
+    pub tags: Vec<String>,
 }
 
 fn do_nothing() {
@@ -65,10 +65,26 @@ impl fmt::Display for Bookmark {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Container {
-    pub id: Uuid,
-    pub label: String,
     pub container: Option<Uuid>,
     pub container_type: ContainerTypes,
+    pub id: Uuid,
+    pub label: String,
+}
+
+impl Container {
+    pub fn new(
+        container: Option<Uuid>,
+        container_type: ContainerTypes,
+        id: Uuid,
+        label: String,
+    ) -> Self {
+        Self {
+            container,
+            container_type,
+            id,
+            label,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -78,15 +94,28 @@ pub enum ContainerTypes {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum Thingy {
-    Bookmark(Bookmark),
-    Container(Container),
+pub enum Keyspace {
+    Bookmarks,
+    Containers,
 }
+/*
+impl Keyspace {
+    pub fn as_bookmarks(&self) -> Option<&Option<Bookmark>> {
+        if let Self::Bookmarks(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 
-pub struct Heirarchy {
-    pub root: Container,
-    pub heirarchy: Vec<Vec<Thingy>>,
-}
+    pub fn as_containers(&self) -> Option<&Option<Container>> {
+        if let Self::Containers(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}*/
 
 #[derive(Parser)]
 pub struct Cli {

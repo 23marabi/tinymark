@@ -1,5 +1,5 @@
 use crate::database;
-use crate::structures::{Bookmark, Container, ContainerTypes};
+use crate::structures::{Bookmark, Container, ContainerTypes, Keyspace};
 use chrono::Utc;
 use paris::*;
 use serde_json::json;
@@ -13,7 +13,7 @@ use uuid_simd::UuidExt;
 
 use dialoguer::{console::Term, theme::ColorfulTheme, Select};
 
-pub fn edit(json: bool, url: &Option<Url>, path: Option<PathBuf>) {
+pub fn edit_bookmark(json: bool, url: &Option<Url>, path: Option<PathBuf>) {
     if json {
         println!(
             "{}",
@@ -28,7 +28,7 @@ pub fn edit(json: bool, url: &Option<Url>, path: Option<PathBuf>) {
             Some(link) => {
                 println!("User selected item :\n{}", link);
             }
-            None => match database::get_all(json, path) {
+            None => match database::get_all(json, path, Keyspace::Bookmarks) {
                 Some(bookmarks) => {
                     let mut items: Vec<&Url> = Vec::new();
                     for i in &bookmarks {
@@ -41,7 +41,12 @@ pub fn edit(json: bool, url: &Option<Url>, path: Option<PathBuf>) {
                         .unwrap();
 
                     match selection {
-                        Some(index) => println!("User selected item :\n{}", bookmarks[index]),
+                        Some(index) => {
+                            println!(
+                                "User selected item :\n{}",
+                                bookmarks[index]
+                            );
+                        }
                         None => println!("User did not select anything"),
                     }
                 }
@@ -63,7 +68,7 @@ pub fn edit(json: bool, url: &Option<Url>, path: Option<PathBuf>) {
     }
 }
 
-pub fn add(
+pub fn add_bookmark(
     url: &Url,
     name: &String,
     description: &Option<String>,
@@ -80,7 +85,7 @@ pub fn add(
         created_at: Utc::now(),
     };
 
-    database::insert_entry(&bookmark, json, path);
+    database::insert_entry(json, path, Keyspace::Bookmarks, &bookmark);
     if json {
         println!("{}", serde_json::to_string(&bookmark).unwrap());
     } else {
@@ -89,14 +94,17 @@ pub fn add(
     };
 }
 
-pub fn list(json: bool, path: Option<PathBuf>) {
-    match database::get_all(json, path) {
+pub fn list_bookmarks(json: bool, path: Option<PathBuf>) {
+    match database::get_all(json, path, Keyspace::Bookmarks) {
         Some(bookmarks) => {
             for i in bookmarks {
                 if json {
-                    println!("{}", serde_json::to_string(&i).unwrap());
+                    println!(
+                        "{}",
+                        serde_json::to_string(&i).unwrap()
+                    );
                 } else {
-                    println!("{}", i);
+                    println!("{}", &i);
                 }
             }
         }
@@ -150,7 +158,7 @@ pub fn export(file_path: PathBuf, json: bool, path: Option<PathBuf>) {
     };
     let writer = BufWriter::new(file);
 
-    match database::get_all(json, path) {
+    match database::get_all(json, path, Keyspace::Bookmarks) {
         Some(bookmarks) => serde_json::to_writer(writer, &bookmarks).unwrap(),
         None => std::process::exit(exitcode::IOERR),
     }
@@ -209,7 +217,7 @@ pub fn import(file_path: PathBuf, json: bool, store_path: Option<PathBuf>) {
         }
     };
 
-    database::insert_multiple(&bookmarks, json, store_path);
+    database::insert_multiple(&bookmarks, json, store_path, Keyspace::Bookmarks);
 
     if json {
         println!(

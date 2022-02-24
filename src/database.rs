@@ -1,5 +1,5 @@
 use crate::commands::env_err;
-use crate::structures::Bookmark;
+use crate::structures::{Bookmark, Keyspace};
 
 use paris::*;
 use serde_json::json;
@@ -7,7 +7,7 @@ use std::env;
 use std::path::PathBuf;
 use url::Url;
 
-fn open_database(json: bool, path: Option<PathBuf>) -> Option<sled::Db> {
+fn open_database(json: bool, path: Option<PathBuf>, keyspace: Keyspace) -> Option<sled::Tree> {
     let db: sled::Db;
     let database_path = match path {
         Some(path) => path,
@@ -18,7 +18,7 @@ fn open_database(json: bool, path: Option<PathBuf>) -> Option<sled::Db> {
                     let mut tmp_path = PathBuf::new();
                     tmp_path.push(val);
                     tmp_path.push(".local/share/tinymark");
-                    tmp_path.push("bookmarks_db");
+                    tmp_path.push("database");
                     tmp_path
                 }
                 Err(e) => {
@@ -28,6 +28,7 @@ fn open_database(json: bool, path: Option<PathBuf>) -> Option<sled::Db> {
             }
         }
     };
+
     match sled::open(database_path) {
         Ok(database) => db = database,
         Err(error) => {
@@ -46,11 +47,38 @@ fn open_database(json: bool, path: Option<PathBuf>) -> Option<sled::Db> {
         }
     };
 
-    return Some(db);
+    let keyspace_str = match keyspace {
+        Keyspace::Bookmarks => "bookmarks",
+        Keyspace::Containers => "containers",
+    };
+
+    let database: Option<sled::Tree> = match db.open_tree(keyspace_str) {
+        Ok(nya) => Some(nya),
+        Err(e) => {
+            if json {
+                println!(
+                    "{}",
+                    json!({
+                        "status": "fail",
+                        "reason": e.to_string(),
+                    })
+                );
+            } else {
+                error!("error in opening Tree: {}", e);
+            }
+            None
+        }
+    };
+    return database;
 }
 
-pub fn insert_multiple(entries: &Vec<Bookmark>, json: bool, path: Option<PathBuf>) {
-    let db = match open_database(json, path) {
+pub fn insert_multiple(
+    entries: &Vec<Bookmark>,
+    json: bool,
+    path: Option<PathBuf>,
+    keyspace: Keyspace,
+) {
+    let db = match open_database(json, path, keyspace) {
         Some(database) => database,
         None => std::process::exit(exitcode::NOINPUT),
     };
@@ -102,8 +130,9 @@ pub fn insert_multiple(entries: &Vec<Bookmark>, json: bool, path: Option<PathBuf
     }
 }
 
-pub fn insert_entry(entry: &Bookmark, json: bool, path: Option<PathBuf>) {
-    let db = match open_database(json, path) {
+pub fn insert_entry(json: bool, path: Option<PathBuf>, keyspace: Keyspace, _entry: &Bookmark) {
+    let entry = _entry;
+    let db = match open_database(json, path, keyspace) {
         Some(database) => database,
         None => std::process::exit(exitcode::NOINPUT),
     };
@@ -113,8 +142,7 @@ pub fn insert_entry(entry: &Bookmark, json: bool, path: Option<PathBuf>) {
         Ok(result) => bytes = result,
         Err(error) => {
             if json {
-                println!(
-                    "{}",
+                println!("{}",
                     json!({
                         "status": "fail",
                         "reason": error.to_string(),
@@ -125,9 +153,11 @@ pub fn insert_entry(entry: &Bookmark, json: bool, path: Option<PathBuf>) {
             }
             std::process::exit(exitcode::DATAERR);
         }
-    };
+    }
 
-    match db.insert(entry.link.to_string(), bytes) {
+    let name = &entry.link.to_string();
+
+    match db.insert(&name, bytes) {
         Ok(_) => {
             if json {
                 println!(
@@ -138,7 +168,7 @@ pub fn insert_entry(entry: &Bookmark, json: bool, path: Option<PathBuf>) {
                     })
                 );
             } else {
-                info!("succesfully inserted entry <i>{}", entry.link);
+                info!("succesfully inserted entry <i>{}", name);
             }
         }
         Err(error) => {
@@ -151,7 +181,7 @@ pub fn insert_entry(entry: &Bookmark, json: bool, path: Option<PathBuf>) {
                     })
                 );
             } else {
-                error!("failed to insert entry <i>{}</i>!\n {}", entry.link, error);
+                error!("failed to insert entry <i>{}</i>!\n {}", name, error);
             }
             std::process::exit(exitcode::IOERR);
         }
@@ -160,8 +190,8 @@ pub fn insert_entry(entry: &Bookmark, json: bool, path: Option<PathBuf>) {
     db.flush().unwrap();
 }
 
-pub fn remove_entry(link: &Url, json: bool, path: Option<PathBuf>) {
-    let db = match open_database(json, path) {
+pub fn remove_entry(link: &Url, json: bool, path: Option<PathBuf>, keyspace: Keyspace) {
+    let db = match open_database(json, path, keyspace) {
         Some(database) => database,
         None => std::process::exit(exitcode::NOINPUT),
     };
@@ -187,14 +217,30 @@ pub fn remove_entry(link: &Url, json: bool, path: Option<PathBuf>) {
     db.flush().unwrap();
 }
 
-pub fn get_all(json: bool, path: Option<PathBuf>) -> Option<Vec<Bookmark>> {
-    let db = match open_database(json, path) {
+pub fn get_all(json: bool, path: Option<PathBuf>, keyspace: Keyspace) -> Option<Vec<Bookmark>> {
+    let db = match open_database(json, path, keyspace) {
         Some(database) => database,
         None => return None,
     };
 
     let first_key = match db.first() {
-        Ok(pair) => pair.unwrap().0,
+        Ok(pair) => match pair {
+            Some(key) => key.0,
+            None => {
+                if json {
+                    println!(
+                        "{}",
+                        json!({
+                        "status": "error",
+                        "reason": "could not get first key",
+                        })
+                    );
+                } else {
+                    error!("error in getting first key");
+                }
+                std::process::exit(exitcode::IOERR);
+            }
+        },
         Err(error) => {
             if json {
                 println!(
@@ -240,7 +286,6 @@ pub fn get_all(json: bool, path: Option<PathBuf>) -> Option<Vec<Bookmark>> {
             None => break,
         }
     }
-
     return Some(bookmarks_vector);
 }
 
