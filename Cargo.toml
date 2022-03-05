@@ -6,8 +6,7 @@ edition = "2021"
 authors = ["Erin Nova <contact@the-system.eu.org>"]
 license = "CNPLv7+"
 readme = "README.md"
-homepage = "https://git.lavender.software/erin/tinymark"
-repository = "https://git.lavender.software/erin/tinymark"
+repository = "https://bytes.keithhacks.cyou/erin/tinymark"
 keywords = ["cli", "bookmark", "tiny"]
 categories = ["command-line-utilities"]
 
